@@ -31,6 +31,8 @@ function EditMemberContent() {
   const [showDialog, setShowDialog] = useState(false);
   const [dialogType, setDialogType] = useState<'success' | 'error' | 'warning'>('success');
   const [dialogMessage, setDialogMessage] = useState('');
+  const [dialogMode, setDialogMode] = useState<'alert' | 'confirm'>('alert');
+  const [dialogTitle, setDialogTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -153,38 +155,100 @@ function EditMemberContent() {
     fetchMember();
   }, [memberId]);
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!formData.name || !formData.relationship) {
       setDialogType('error');
       setDialogMessage('Please fill in all required fields');
+      setDialogTitle('Error');
+      setDialogMode('alert');
       setShowDialog(true);
       return;
     }
 
-    // Here you would typically update in a database
-    console.log('Updating member:', formData);
-    
-    setDialogType('success');
-    setDialogMessage('Member updated successfully!');
-    setShowDialog(true);
-    
-    setTimeout(() => {
-      router.push('/pages/users/view');
-    }, 2000);
-  };
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const response = await fetch(`${API_BASE}/integration/family-members/${memberId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token || ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          relationship: formData.relationship,
+          birthOrder: formData.birthOrder,
+          dateOfBirth: formData.dateOfBirth,
+          photo: formData.photo,
+          email: formData.email,
+          phone: formData.phone
+        })
+      });
 
-  const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
-      // Here you would typically delete from database
-      console.log('Deleting member:', memberId);
+      if (!response.ok) {
+        throw new Error('Failed to update member');
+      }
       
       setDialogType('success');
-      setDialogMessage('Member deleted successfully!');
+      setDialogMessage('Member updated successfully!');
+      setDialogTitle('Success!');
+      setDialogMode('alert');
       setShowDialog(true);
       
       setTimeout(() => {
         router.push('/pages/users/view');
       }, 2000);
+    } catch (error) {
+      console.error('Update error:', error);
+      setDialogType('error');
+      setDialogMessage('Failed to update member. Please try again.');
+      setDialogTitle('Error');
+      setDialogMode('alert');
+      setShowDialog(true);
+    }
+  };
+
+  const handleDelete = async () => {
+    // Show confirmation dialog instead of browser confirm
+    setDialogType('warning');
+    setDialogMessage('Are you sure you want to delete this member? This action cannot be undone.');
+    setDialogTitle('Delete Member');
+    setDialogMode('confirm');
+    setShowDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const response = await fetch(`${API_BASE}/integration/family-members/${memberId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token || ''}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete member');
+      }
+      
+      setDialogType('success');
+      setDialogMessage('Member deleted successfully!');
+      setDialogTitle('Success!');
+      setDialogMode('alert');
+      setShowDialog(true);
+      
+      setTimeout(() => {
+        router.push('/pages/users/view');
+      }, 2000);
+    } catch (error) {
+      console.error('Delete error:', error);
+      setDialogType('error');
+      setDialogMessage('Failed to delete member. Please try again.');
+      setDialogTitle('Error');
+      setDialogMode('alert');
+      setShowDialog(true);
     }
   };
 
@@ -401,9 +465,14 @@ function EditMemberContent() {
       <DialogBox
         isOpen={showDialog}
         onClose={() => setShowDialog(false)}
-        title={dialogType === 'success' ? 'Success!' : 'Error'}
+        title={dialogTitle}
         message={dialogMessage}
         type={dialogType}
+        mode={dialogMode}
+        onConfirm={dialogMode === 'confirm' ? confirmDelete : undefined}
+        onCancel={dialogMode === 'confirm' ? () => setShowDialog(false) : undefined}
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </div>
   );
