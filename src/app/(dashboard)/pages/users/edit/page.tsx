@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { FiEdit2, FiTrash2, FiArrowLeft } from 'react-icons/fi';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -19,7 +19,7 @@ type Member = {
   phone?: string;
 };
 
-export default function EditMemberPage() {
+function EditMemberContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const memberId = searchParams.get('id');
@@ -402,5 +402,13 @@ export default function EditMemberPage() {
         type={dialogType}
       />
     </div>
+  );
+}
+
+export default function EditMemberPage() {
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto p-8">Loading...</div>}>
+      <EditMemberContent />
+    </Suspense>
   );
 }
