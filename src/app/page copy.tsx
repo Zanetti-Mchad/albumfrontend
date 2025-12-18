@@ -1,121 +1,35 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiPhone, FiAlertCircle, FiLogIn } from 'react-icons/fi';
+
+import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn, FiPhone } from 'react-icons/fi';
+
+// Custom button props that extend motion button props
 
 export default function SignIn() {
-  const router = useRouter();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [animationComplete, setAnimationComplete] = useState(false);
 
-  const redirectBasedOnRole = useCallback((role: string) => {
-    switch (role) {
-      case 'admin':
-        router.push('/admin');
-        break;
-      case 'member':
-      default:
-        router.push('/member');
-        break;
-    }
-  }, [router]);
-
   useEffect(() => {
-    // Redirect if already logged in
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    if (token && userRole) {
-      redirectBasedOnRole(userRole);
-    } else {
-      setAnimationComplete(true);
-    }
-  }, [redirectBasedOnRole]);
+    // Set animation complete after initial render
+    const timer = setTimeout(() => setAnimationComplete(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    
-    if (!identifier || !password) {
-      setError('Please enter both email/phone and password');
-      return;
-    }
-
     setIsLoading(true);
-
-    try {
-      const isEmail = identifier.includes('@');
-      // Backend expects either `email` or a generic `identifier` field for phone/username
-      const loginData = isEmail 
-        ? { email: identifier, password }
-        : { identifier, password };
-
-      console.log('Sending login request:', { loginData });
-      
-      const response = await fetch('http://localhost:4210/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginData),
-      });
-
-      let data;
-      try {
-        data = await response.json();
-        console.log('Login response:', { status: response.status, data });
-      } catch (jsonError) {
-        console.error('Failed to parse JSON response:', jsonError);
-        throw new Error('Invalid response from server');
-      }
-
-      if (!response.ok) {
-        // Handle different error statuses
-        if (response.status === 401) {
-          throw new Error('Invalid email/phone or password');
-        } else if (response.status === 400) {
-          throw new Error(data.status?.returnMessage || 'Invalid request');
-        } else if (response.status >= 500) {
-          throw new Error('Server error. Please try again later.');
-        } else {
-          throw new Error(data.status?.returnMessage || 'Login failed');
-        }
-      }
-
-      // Verify response structure
-      if (!data.accessToken || !data.data?.user) {
-        console.error('Invalid response structure:', data);
-        throw new Error('Invalid response from server');
-      }
-
-      // Save token and user data
-      localStorage.setItem('token', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('userRole', data.data.user.role);
-      localStorage.setItem('userName', data.data.user.name || '');
-      localStorage.setItem('tokenExpiry', String(Date.now() + (data.expiresIn * 1000)));
-
-      console.log('Login successful, redirecting...');
-      // Redirect based on role
-      redirectBasedOnRole(data.data.user.role || 'user');
-
-    } catch (err) {
-      console.error('Login error details:', {
-        error: err,
-        message: err instanceof Error ? err.message : 'Unknown error'
-      });
-      setError(err instanceof Error ? err.message : 'An error occurred during login');
-    } finally {
+    // Simulate API call
+    setTimeout(() => {
+      console.log('Signing in with:', { identifier, password });
       setIsLoading(false);
-    }
+    }, 1500);
   };
 
   return (
@@ -191,9 +105,14 @@ export default function SignIn() {
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                     Password
                   </label>
-                  <Link href="/reset-password" className="text-sm text-indigo-600 hover:text-indigo-500 underline">
-                    Forgot password?
-                  </Link>
+                  <span className="relative group">
+  <Link href="/reset-password" className="text-sm text-indigo-600 hover:text-indigo-500">
+    Forgot?
+  </Link>
+  <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max px-3 py-1 rounded bg-gray-800 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg">
+    Reset your password
+  </span>
+</span>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -223,19 +142,6 @@ export default function SignIn() {
                   </button>
                 </div>
               </div>
-
-              {error && (
-                <div className="rounded-md bg-red-50 p-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <FiAlertCircle className="h-5 w-5 text-red-400" aria-hidden="true" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">{error}</h3>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div>
                 <motion.div

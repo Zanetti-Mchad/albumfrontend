@@ -1,0 +1,49 @@
+New endpoints
+All require Authorization: Bearer <TOKEN>.
+Album
+POST /api/v1/albums/:id/like → like album
+DELETE /api/v1/albums/:id/like → unlike album
+GET /api/v1/albums/:id/reactions → { likes, comments }
+POST /api/v1/albums/:id/comments body: { content } → create comment
+GET /api/v1/albums/:id/comments → list comments with user info
+Media (within album)
+POST /api/v1/albums/:id/media/:mediaId/like
+DELETE /api/v1/albums/:id/media/:mediaId/like
+GET /api/v1/albums/:id/media/:mediaId/reactions → { likes, comments }
+POST /api/v1/albums/:id/media/:mediaId/comments body: { content }
+GET /api/v1/albums/:id/media/:mediaId/comments {
+  "status": { "returnCode": 200, "returnMessage": "Album liked" },
+  "data": { "likes": 3, "comments": 1 }
+} {
+  "status": { "returnCode": 201, "returnMessage": "Comment added" },
+  "data": {
+    "comment": {
+      "id": "cuid",
+      "userId": "userId",
+      "albumId": "albumId",
+      "content": "Nice photos!",
+      "createdAt": "2025-10-31T08:00:00.000Z",
+      "user": { "id":"...", "firstName":"...", "lastName":"...", "photo":"..." }
+    }
+  }
+} {
+  "status": { "returnCode": 200, "returnMessage": "Comments fetched" },
+  "data": {
+    "comments": [
+      {
+        "id":"...",
+        "userId":"...",
+        "albumId":"...",
+        "content":"Nice photos!",
+        "createdAt":"...",
+        "user": { "id":"...","firstName":"...","lastName":"...","photo":"..." }
+      }
+    ]
+  }
+} Frontend integration hints
+Albums list: fetch /albums as you do; to display counts, call /albums/:id/reactions and merge {likes, comments}.
+Detail modal:
+Media likes count: call /albums/:id/media/:mediaId/reactions.
+Like toggle: POST or DELETE /albums/:id/media/:mediaId/like.
+Comments list: GET /albums/:id/media/:mediaId/comments.
+Add comment: POST /albums/:id/media/:mediaId/comments with { content }.
