@@ -5,6 +5,8 @@ import { FiUsers, FiUserPlus, FiEye } from 'react-icons/fi';
 import Image from 'next/image';
 import Link from 'next/link';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://albumbackend-production-7eed.up.railway.app/api/v1';
+
 interface FamilyMember {
   id: string;
   name: string;
@@ -27,7 +29,7 @@ export default function ViewMembersPage() {
     const fetchMembers = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:4210/api/v1/integration/family-members', {
+        const response = await fetch(`${API_BASE}/integration/family-members`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

@@ -20,7 +20,7 @@ export default function CreateAlbum() {
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4210/api/v1';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://albumbackend-production-7eed.up.railway.app/api/v1';
 
   // Client-side upload to Cloudinary; backend will receive URLs (JSON)
   const uploadToCloudinary = useCallback(async (file: File, type: 'image' | 'video') => {

@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import DialogBox from '@/components/dialogbox';
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://albumbackend-production-7eed.up.railway.app/api/v1';
+
 type Member = {
   id?: string;
   name?: string;
@@ -96,7 +100,7 @@ function EditMemberContent() {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
         // Try show endpoint first
-        const showResp = await fetch(`http://localhost:4210/api/v1/integration/family-members/${memberId}`, {
+        const showResp = await fetch(`${API_BASE}/integration/family-members/${memberId}`, {
           headers: {
             'Authorization': `Bearer ${token || ''}`,
             'Content-Type': 'application/json'
@@ -112,7 +116,7 @@ function EditMemberContent() {
           }
         } else {
           // Fallback: get list and find locally
-          const listResp = await fetch('http://localhost:4210/api/v1/integration/family-members', {
+          const listResp = await fetch(`${API_BASE}/integration/family-members`, {
             headers: {
               'Authorization': `Bearer ${token || ''}`,
               'Content-Type': 'application/json'

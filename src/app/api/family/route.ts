@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4210/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://albumbackend-production-7eed.up.railway.app/api/v1';
 
 async function getAuthToken() {
   if (typeof window !== 'undefined') {

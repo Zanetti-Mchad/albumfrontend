@@ -6,6 +6,10 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import DialogBox from '@/components/dialogbox';
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://albumbackend-production-7eed.up.railway.app/api/v1';
+
 export default function CreateMemberPage() {
   const router = useRouter();
   const [showDialog, setShowDialog] = useState(false);
@@ -176,7 +180,7 @@ export default function CreateMemberPage() {
       };
 
       // 1. First register the user
-      const registerResponse = await fetch('http://localhost:4210/api/v1/auth/register', {
+      const registerResponse = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -203,7 +207,7 @@ export default function CreateMemberPage() {
       console.log('Registration API successful:', registerData);
 
       // 2. If registration is successful, save additional family member data
-      const memberResponse = await fetch('http://localhost:4210/api/v1/integration/family-members', {
+      const memberResponse = await fetch(`${API_BASE}/integration/family-members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import DialogBox from '@/components/dialogbox';
 
 // Endpoint constants and types
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4210/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://albumbackend-production-7eed.up.railway.app/api/v1';
 const ENDPOINTS = {
   putFamily: `${API_BASE}/settings/family`,
   getFamily: `${API_BASE}/settings/family`,

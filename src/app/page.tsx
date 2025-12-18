@@ -7,6 +7,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiPhone, FiAlertCircle, FiLogIn } from 'react-icons/fi';
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://albumbackend-production-7eed.up.railway.app/api/v1';
+
 export default function SignIn() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
@@ -60,7 +64,7 @@ export default function SignIn() {
 
       console.log('Sending login request:', { loginData });
       
-      const response = await fetch('http://localhost:4210/api/v1/auth/login', {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

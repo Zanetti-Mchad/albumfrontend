@@ -6,7 +6,9 @@ import { FiMail, FiPhone, FiLock, FiKey } from "react-icons/fi";
 
 export default function ResetPassword() {
   const router = useRouter();
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4210/api/v1';
+  const API_BASE =
+    process.env.NEXT_PUBLIC_API_URL ||
+    'https://albumbackend-production-7eed.up.railway.app/api/v1';
   const [identifier, setIdentifier] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
