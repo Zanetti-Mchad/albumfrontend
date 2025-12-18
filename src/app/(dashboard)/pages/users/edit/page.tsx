@@ -6,6 +6,19 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import DialogBox from '@/components/dialogbox';
 
+type Member = {
+  id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  relationship?: string;
+  birthOrder?: string;
+  dateOfBirth?: string;
+  photo?: string;
+  email?: string;
+  phone?: string;
+};
+
 export default function EditMemberPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -90,11 +103,13 @@ export default function EditMemberPage() {
           }
         });
 
-        let member: any | null = null;
+        let member: Member | null = null;
         if (showResp.ok) {
           const showData = await showResp.json();
-          const maybe = showData?.data?.member || showData?.data;
-          if (maybe) member = maybe;
+          const maybe = (showData?.data?.member || showData?.data) as Member | null | undefined;
+          if (maybe) {
+            member = maybe;
+          }
         } else {
           // Fallback: get list and find locally
           const listResp = await fetch('http://localhost:4210/api/v1/integration/family-members', {
@@ -104,8 +119,8 @@ export default function EditMemberPage() {
             }
           });
           const listData = await listResp.json();
-          const arr = listData?.data?.members || [];
-          member = Array.isArray(arr) ? arr.find((m: any) => m.id === memberId) : null;
+          const arr: Member[] = listData?.data?.members || [];
+          member = Array.isArray(arr) ? (arr.find((m: Member) => m.id === memberId) || null) : null;
         }
 
         if (!member) {

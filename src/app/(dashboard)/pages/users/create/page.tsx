@@ -213,10 +213,7 @@ export default function CreateMemberPage() {
           userId: registerData.data.user.id,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          relationship: formData.relationship,
-          birthOrder: formData.birthOrder,
-          dateOfBirth: formData.dateOfBirth,
-          photo: formData.photo
+          ...familyMemberData
         })
       });
 
