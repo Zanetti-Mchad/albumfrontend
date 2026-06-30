@@ -187,7 +187,7 @@ export default function SignIn() {
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
                     placeholder="you@example.com or 0712345678"
                   />
                 </div>
@@ -214,7 +214,7 @@ export default function SignIn() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
                     placeholder="••••••••"
                   />
                   <button
@@ -291,7 +291,7 @@ export default function SignIn() {
             </form>
 
             <div className="mt-8 flex flex-col items-center">
-              <blockquote className="italic text-lg text-gray-500 text-center max-w-xs mx-auto">
+              <blockquote className="italic text-lg text-gray-600 text-center max-w-xs mx-auto">
                 &ldquo;Family is the heart of every memory, the album of every moment.&rdquo;
               </blockquote>
             </div>
