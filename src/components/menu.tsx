@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   FiHome,
   FiImage, 
@@ -33,21 +33,24 @@ export default function Menu() {
   const [filteredItems, setFilteredItems] = useState<NavItem[]>([]);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [userRole, setUserRole] = useState('member');
   const { searchQuery } = useSearch();
   const pathname = usePathname();
 
   const navItems = useMemo<NavItem[]>(() => [
-    { 
+    {
       name: 'Home',
       icon: FiHome,
       active: true,
-      path: '/admin'
-    },
-    { 
-      name: 'Albums', 
-      icon: FiImage, 
-      active: true, 
       path: '/admin',
+      roles: ['admin', 'member']
+    },
+    {
+      name: 'Albums',
+      icon: FiImage,
+      active: true,
+      path: '/admin',
+      roles: ['admin', 'member'],
       subItems: [
         { name: 'Create Album', icon: FiPlus, active: false, path: '/pages/albums/create' },
         { name: 'View All', icon: FiList, active: false, path: '/pages/albums/view' },
@@ -55,42 +58,82 @@ export default function Menu() {
         { name: 'Delete Album', icon: FiTrash2, active: false, path: '/pages/albums/delete' }
       ]
     },
-    { name: 'Family Tree', icon: FiUsers, active: false, path: '/pages/familytree' },
-    { 
-      name: 'Members', 
-      icon: FiUsers, 
-      active: false, 
-      path: '/pages/users/view',
+    {
+      name: 'Family Tree',
+      icon: FiUsers,
+      active: false,
+      path: '/pages/familytree',
+      roles: ['admin', 'member'],
       subItems: [
-        { name: 'Create', icon: FiUserPlus, active: false, path: '/pages/users/create' },
-        { name: 'View', icon: FiList, active: false, path: '/pages/users/view' },
-        { name: 'Edit', icon: FiUser, active: false, path: '/pages/users/edit' }      
+        { name: 'Create', icon: FiPlus, active: false, path: '/pages/familytree/create' },
+        { name: 'View', icon: FiList, active: false, path: '/pages/familytree/view' },
+        { name: 'Edit', icon: FiEdit, active: false, path: '/pages/familytree/edit' }
       ]
     },
-    
-    { name: 'Profile', icon: FiUser, active: false, path: '/pages/profile' },
-    { name: 'Settings', icon: FiSettings, active: false, path: '/pages/settings' },
-    { name: 'Log out', icon: FiLogOut, active: false, path: '/pages/logout' }
+    {
+      name: 'Members',
+      icon: FiUsers,
+      active: false,
+      path: '/pages/users/view',
+      roles: ['admin','member'],
+      subItems: [
+        { name: 'Create', icon: FiUserPlus, roles: ['admin','member'],active: false, path: '/pages/users/create' },
+        { name: 'View', icon: FiList, roles: ['admin','member'],active: false, path: '/pages/users/view' },
+        { name: 'Edit', icon: FiUser, roles: ['admin','member'],active: false, path: '/pages/users/edit' }
+      ]
+    },
+    { name: 'Profile', icon: FiUser, active: false, path: '/pages/profile', roles: ['admin', 'member'] },
+    { name: 'Settings', icon: FiSettings, active: false, path: '/pages/settings', roles: ['admin'] },
+    { name: 'Log out', icon: FiLogOut, active: false, path: '/pages/logout', roles: ['admin', 'member'] }
   ], []);
 
-  // Filter items based on search query
+  const isItemVisible = useCallback(
+    (item: NavItem) => {
+      if (!item.roles || item.roles.length === 0) {
+        return true;
+      }
+      return userRole ? item.roles.includes(userRole) : false;
+    },
+    [userRole]
+  );
+
+  const roleFilteredItems = useMemo(() => {
+    const filterItems = (items: NavItem[]): NavItem[] => {
+      return items.reduce<NavItem[]>((acc, item) => {
+        if (!isItemVisible(item)) {
+          return acc;
+        }
+        const filteredSubItems = item.subItems ? filterItems(item.subItems) : undefined;
+        acc.push({
+          ...item,
+          subItems: filteredSubItems && filteredSubItems.length > 0 ? filteredSubItems : undefined
+        });
+        return acc;
+      }, []);
+    };
+    return filterItems(navItems);
+  }, [navItems, isItemVisible]);
+
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setFilteredItems(navItems);
+      setFilteredItems(roleFilteredItems);
       return;
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = navItems.filter(item => 
+    const filtered = roleFilteredItems.filter((item) =>
       item.name.toLowerCase().includes(query)
     );
     setFilteredItems(filtered);
-  }, [searchQuery, navItems]);
+  }, [searchQuery, roleFilteredItems]);
 
-  // Initialize with all items
   useEffect(() => {
-    setFilteredItems(navItems);
-  }, [navItems]);
+    if (typeof window === 'undefined') return;
+    const storedRole = window.localStorage.getItem('userRole');
+    if (storedRole) {
+      setUserRole(storedRole);
+    }
+  }, []);
 
   return (
     <aside className="w-28 bg-white shadow-sm border-r border-slate-200 flex flex-col items-center py-6">

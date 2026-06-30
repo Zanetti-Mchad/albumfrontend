@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiImage, FiVideo, FiChevronRight, FiClock, FiHeart, FiMessageCircle } from 'react-icons/fi';
 import Image from 'next/image';
+import { resolveAlbumCover } from '@/lib/media';
 
 type ApiAlbum = {
   id: string;
@@ -59,7 +60,7 @@ export default function AlbumsPage() {
           return {
             id: a.id,
             title: a.title,
-            cover: a.cover || '/next.svg',
+            cover: resolveAlbumCover(a.cover) || '/next.svg',
             photoCount: typeof a.photoCount === 'number' ? a.photoCount : 0,
             videoCount: 0,
             uploadedBy: name,
@@ -75,31 +76,38 @@ export default function AlbumsPage() {
             try {
               const d = await fetch(`${API_BASE}/albums/${a.id}`, { headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
               const dj = await d.json().catch(() => ({}));
-              if (!d.ok) return a;
+              if (!d.ok) return { ...a, cover: resolveAlbumCover(a.cover) || '/next.svg' };
               const detail = dj?.data?.album || dj?.album;
               const media = Array.isArray(detail?.media) ? detail.media : [];
-              const mediaStats = await Promise.all(
-                media.map(async (m: { id: string; type: string }) => {
-                  try {
-                    const [mr, mc] = await Promise.all([
-                      fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/reactions`, { headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } }),
-                      fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/comments`, { headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } }),
-                    ]);
-                    const [mrj, mcj] = await Promise.all([mr.json().catch(() => ({})), mc.json().catch(() => ({}))]);
-                    const likes = mr.ok ? (mrj?.data?.likes ?? 0) : 0;
-                    const comments = mc.ok && Array.isArray(mcj?.data?.comments) ? mcj.data.comments.length : 0;
-                    return { likes, comments };
-                  } catch {
-                    return { likes: 0, comments: 0 };
-                  }
-                })
-              );
-              const totalLikes = mediaStats.reduce((sum, r) => sum + (r.likes || 0), 0);
-              const totalComments = mediaStats.reduce((sum, r) => sum + (r.comments || 0), 0);
+              const resolvedCover = resolveAlbumCover(detail?.cover ?? a.cover, media);
+              let totalLikes = 0;
+              let totalComments = 0;
+              try {
+                const mediaStats = await Promise.all(
+                  media.map(async (m: { id: string; type: string }) => {
+                    try {
+                      const [mr, mc] = await Promise.all([
+                        fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/reactions`, { headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } }),
+                        fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/comments`, { headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } }),
+                      ]);
+                      const [mrj, mcj] = await Promise.all([mr.json().catch(() => ({})), mc.json().catch(() => ({}))]);
+                      const likes = mr.ok ? (mrj?.data?.likes ?? 0) : 0;
+                      const comments = mc.ok && Array.isArray(mcj?.data?.comments) ? mcj.data.comments.length : 0;
+                      return { likes, comments };
+                    } catch {
+                      return { likes: 0, comments: 0 };
+                    }
+                  })
+                );
+                totalLikes = mediaStats.reduce((sum, r) => sum + (r.likes || 0), 0);
+                totalComments = mediaStats.reduce((sum, r) => sum + (r.comments || 0), 0);
+              } catch {
+                // stats are optional; cover must still resolve
+              }
               const videoCount = media.filter((m: { type: string }) => m.type === 'video').length;
-              return { ...a, likes: totalLikes, comments: totalComments, videoCount } as ViewAlbum;
+              return { ...a, cover: resolvedCover, likes: totalLikes, comments: totalComments, videoCount } as ViewAlbum;
             } catch {
-              return a;
+              return { ...a, cover: resolveAlbumCover(a.cover) || '/next.svg' };
             }
           })
         );
@@ -183,6 +191,8 @@ export default function AlbumsPage() {
                   src={album.cover}
                   alt={album.title}
                   fill
+                  unoptimized
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover group-hover:opacity-90 transition-opacity"
                 />
                 <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded flex items-center">

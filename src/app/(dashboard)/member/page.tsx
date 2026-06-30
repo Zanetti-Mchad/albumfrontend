@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
+import { getAlbumCoverUrl, resolveAlbumCover } from '@/lib/media';
 import { FiClock, FiChevronLeft, FiChevronRight, FiMessageCircle } from 'react-icons/fi';
 import PhotoModal from '@/components/PhotoModal';
 
@@ -76,7 +77,7 @@ const Dashboard = () => {
 
   // Build slideshow from album covers
   const photos = useMemo(() => (
-    albums.map((a, idx) => ({ id: idx + 1, url: a.cover, caption: a.title }))
+    albums.map((a, idx) => ({ id: idx + 1, url: getAlbumCoverUrl(a.cover), caption: a.title }))
   ), [albums]);
 
   // Get unique users from albums
@@ -121,7 +122,7 @@ const Dashboard = () => {
           return {
             id: a.id,
             title: a.title,
-            cover: a.cover || '/next.svg',
+            cover: resolveAlbumCover(a.cover) || '/next.svg',
             photoCount: typeof a.photoCount === 'number' ? a.photoCount : 0,
             videoCount: 0,
             uploadedBy: name,
@@ -137,36 +138,42 @@ const Dashboard = () => {
             try {
               const d = await fetch(`${API_BASE}/albums/${a.id}`, { headers });
               const dj = await d.json().catch(() => ({}));
-              if (!d.ok) return a;
+              if (!d.ok) return { ...a, cover: resolveAlbumCover(a.cover) || '/next.svg' };
               const detail: ApiAlbumDetail | undefined = dj?.data?.album || dj?.album;
               if (!detail) return a;
               const media = detail.media || [];
-              // Fetch likes and comments count for all media in parallel and sum
-              const mediaStats = await Promise.all(
-                media.map(async (m) => {
-                  try {
-                    const [mr, mc] = await Promise.all([
-                      fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/reactions`, { headers }),
-                      fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/comments`, { headers }),
-                    ]);
-                    const [mrj, mcj] = await Promise.all([
-                      mr.json().catch(() => ({})),
-                      mc.json().catch(() => ({})),
-                    ]);
-                    const likes = mr.ok ? (mrj?.data?.likes ?? 0) : 0;
-                    const comments = mc.ok && Array.isArray(mcj?.data?.comments) ? mcj.data.comments.length : 0;
-                    return { likes, comments };
-                  } catch {
-                    return { likes: 0, comments: 0 };
-                  }
-                })
-              );
-              const totalLikes = mediaStats.reduce((sum, r) => sum + (r.likes || 0), 0);
-              const totalComments = mediaStats.reduce((sum, r) => sum + (r.comments || 0), 0);
+              const resolvedCover = resolveAlbumCover(detail.cover ?? a.cover, media);
+              let totalLikes = 0;
+              let totalComments = 0;
+              try {
+                const mediaStats = await Promise.all(
+                  media.map(async (m) => {
+                    try {
+                      const [mr, mc] = await Promise.all([
+                        fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/reactions`, { headers }),
+                        fetch(`${API_BASE}/albums/${a.id}/media/${m.id}/comments`, { headers }),
+                      ]);
+                      const [mrj, mcj] = await Promise.all([
+                        mr.json().catch(() => ({})),
+                        mc.json().catch(() => ({})),
+                      ]);
+                      const likes = mr.ok ? (mrj?.data?.likes ?? 0) : 0;
+                      const comments = mc.ok && Array.isArray(mcj?.data?.comments) ? mcj.data.comments.length : 0;
+                      return { likes, comments };
+                    } catch {
+                      return { likes: 0, comments: 0 };
+                    }
+                  })
+                );
+                totalLikes = mediaStats.reduce((sum, r) => sum + (r.likes || 0), 0);
+                totalComments = mediaStats.reduce((sum, r) => sum + (r.comments || 0), 0);
+              } catch {
+                // stats are optional
+              }
               const videoCount = media.filter(m => m.type === 'video').length;
-              return { ...a, likes: totalLikes, comments: totalComments, videoCount } as AlbumCardItem;
+              return { ...a, cover: resolvedCover, likes: totalLikes, comments: totalComments, videoCount } as AlbumCardItem;
             } catch {
-              return a;
+              return { ...a, cover: resolveAlbumCover(a.cover) || '/next.svg' };
             }
           })
         );
@@ -485,6 +492,7 @@ const Dashboard = () => {
                       src={album.cover}
                       alt={album.title}
                       fill
+                      unoptimized
                       className="object-cover group-hover:scale-110 transition-transform duration-300"
                       style={{ width: '100%', height: '100%', position: 'absolute' }}
                       sizes="(max-width: 768px) 100vw, 400px"

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUpload, FiX, FiPlus, FiVideo, FiStar } from 'react-icons/fi';
 import Image from 'next/image';
+import { pickImageCoverUrl } from '@/lib/media';
 
 type MediaFile = {
   id: string;
@@ -43,6 +44,18 @@ export default function CreateAlbum() {
     return data.secure_url as string;
   }, []);
 
+  const ensureImageCover = useCallback((items: MediaFile[]): MediaFile[] => {
+    const imageCover = items.find((f) => f.isCover && f.type === 'image');
+    if (imageCover) return items;
+
+    const firstImage = items.find((f) => f.type === 'image');
+    if (!firstImage) {
+      return items.map((f) => ({ ...f, isCover: false }));
+    }
+
+    return items.map((f) => ({ ...f, isCover: f.id === firstImage.id }));
+  }, []);
+
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
@@ -55,34 +68,29 @@ export default function CreateAlbum() {
       isCover: false
     }));
 
-    setFiles(prevFiles => {
+    setFiles((prevFiles) => {
       const updatedFiles = [...prevFiles, ...newFiles];
-      // If this is the first file, set it as cover by default
       if (prevFiles.length === 0 && newFiles.length > 0) {
-        updatedFiles[0].isCover = true;
+        const firstImage = updatedFiles.find((f) => f.type === 'image');
+        if (firstImage) firstImage.isCover = true;
       }
-      return updatedFiles;
+      return ensureImageCover(updatedFiles);
     });
-  }, []);
+  }, [ensureImageCover]);
 
   const removeFile = useCallback((id: string) => {
-    setFiles(prevFiles => {
-      const newFiles = prevFiles.filter(file => file.id !== id);
-      // If we removed the cover and there are still files left, set a new cover
-      if (newFiles.length > 0 && !newFiles.some(f => f.isCover)) {
-        newFiles[0].isCover = true;
-      }
-      return newFiles;
-    });
-  }, []);
+    setFiles((prevFiles) => ensureImageCover(prevFiles.filter((file) => file.id !== id)));
+  }, [ensureImageCover]);
 
   const setAsCover = useCallback((id: string) => {
-    setFiles(prevFiles => 
-      prevFiles.map(file => ({
+    setFiles((prevFiles) => {
+      const target = prevFiles.find((f) => f.id === id);
+      if (!target || target.type !== 'image') return prevFiles;
+      return prevFiles.map((file) => ({
         ...file,
-        isCover: file.id === id
-      }))
-    );
+        isCover: file.id === id,
+      }));
+    });
   }, []);
 
   // Clean up object URLs to avoid memory leaks
@@ -124,16 +132,15 @@ export default function CreateAlbum() {
         })
       );
 
-      const cover = uploaded.find(u => u.isCover) || uploaded[0];
+      const coverUrl = pickImageCoverUrl(uploaded);
 
-      // 2) Send JSON payload with URLs to backend
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const endpoint = `${API_BASE}/albums`;
       const payload = {
         title,
         description,
         isPublic: true,
-        cover: cover?.url || null,
+        cover: coverUrl,
         media: uploaded.map(({ url, type, thumbnail, size, mimeType }) => ({ url, type, thumbnail, size, mimeType })),
       };
 
@@ -210,17 +217,19 @@ export default function CreateAlbum() {
                       
                       {/* Action Buttons */}
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAsCover(file.id);
-                          }}
-                          className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
-                          title="Set as cover"
-                        >
-                          <FiStar className={file.isCover ? 'text-yellow-500' : 'text-gray-700'} size={16} />
-                        </button>
+                        {file.type === 'image' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAsCover(file.id);
+                            }}
+                            className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+                            title="Set as cover"
+                          >
+                            <FiStar className={file.isCover ? 'text-yellow-500' : 'text-gray-700'} size={16} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -265,7 +274,7 @@ export default function CreateAlbum() {
             </label>
             <p className="mt-1 text-xs text-gray-500">
               {files.length} file{files.length !== 1 ? 's' : ''} selected
-              {files.some(f => f.isCover) && ' • Click on a file to set it as cover'}
+              {files.some((f) => f.isCover) && ' • Cover must be a photo — click the star on an image'}
             </p>
           </div>
         </div>

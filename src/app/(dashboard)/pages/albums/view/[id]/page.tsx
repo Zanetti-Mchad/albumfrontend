@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { FiArrowLeft, FiHeart, FiMessageCircle, FiClock, FiImage, FiVideo, FiShare2, FiMoreVertical } from 'react-icons/fi';
 import Image from 'next/image';
 import PhotoModal from '@/components/PhotoModal';
+import { getMediaThumbnailUrl, resolveAlbumCover } from '@/lib/media';
 
 type ApiMedia = {
   id: string;
@@ -322,10 +323,11 @@ export default function AlbumDetailPage() {
             <div className="w-full md:w-1/4">
               <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-100">
                 <Image
-                  src={album.cover || '/next.svg'}
+                  src={resolveAlbumCover(album.cover, album.media)}
                   alt={album.title}
                   width={400}
                   height={300}
+                  unoptimized
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -397,17 +399,19 @@ export default function AlbumDetailPage() {
           >
             {item.type === 'image' ? (
               <Image
-                src={item.url}
+                src={getMediaThumbnailUrl(item.url, 'image', item.thumbnail)}
                 alt={album.title}
                 fill
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                 className="object-cover cursor-pointer hover:opacity-90 transition-opacity"
               />
             ) : (
               <div className="relative w-full h-full">
                 <Image
-                  src={item.thumbnail || '/video-placeholder.jpg'}
+                  src={getMediaThumbnailUrl(item.url, 'video', item.thumbnail)}
                   alt={album.title}
                   fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                   className="object-cover"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">

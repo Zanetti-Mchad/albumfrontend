@@ -100,8 +100,9 @@ export default function SignIn() {
         throw new Error('Invalid response from server');
       }
 
-      // Save token and user data
-      localStorage.setItem('token', data.accessToken);
+      // Save token and user data (strip accidental "Bearer " prefix from API)
+      const accessToken = String(data.accessToken).trim().replace(/^Bearer\s+/i, '');
+      localStorage.setItem('token', accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('userRole', data.data.user.role);
       localStorage.setItem('userName', data.data.user.name || '');
@@ -111,12 +112,14 @@ export default function SignIn() {
       // Redirect based on role
       redirectBasedOnRole(data.data.user.role || 'user');
 
-    } catch (err) {
-      console.error('Login error details:', {
-        error: err,
-        message: err instanceof Error ? err.message : 'Unknown error'
-      });
-      setError(err instanceof Error ? err.message : 'An error occurred during login');
+    } catch (err: unknown) {
+      const loginError =
+        err instanceof Error
+          ? err
+          : new Error(typeof err === 'string' ? err : 'Unknown error during login');
+
+      console.error('Login error details:', loginError);
+      setError(loginError.message);
     } finally {
       setIsLoading(false);
     }
