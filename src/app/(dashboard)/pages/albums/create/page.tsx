@@ -36,10 +36,47 @@ export default function CreateAlbum() {
     formData.append('api_key', apiKey);
 
     const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/${type}/upload`;
-    const res = await fetch(endpoint, { method: 'POST', body: formData });
-    const data = await res.json();
-    if (!res.ok || !data.secure_url) {
-      throw new Error(data?.error?.message || 'Failed to upload file');
+    console.log('uploadToCloudinary: starting upload', {
+      name: file.name,
+      size: file.size,
+      mimeType: file.type,
+      type,
+      endpoint,
+    });
+
+    const maxBytes = 100 * 1024 * 1024;
+    const rawSize: unknown = (file as { size?: unknown })?.size;
+    const sizeNum = typeof rawSize === 'number' ? rawSize : Number(rawSize) || 0;
+    const isTooLarge = sizeNum > maxBytes;
+    console.log('uploadToCloudinary: size check', { name: file.name, sizeRaw: rawSize, sizeNum, typeofSize: typeof rawSize, maxBytes, isTooLarge });
+    if (isTooLarge) {
+      console.error(`uploadToCloudinary: file exceeds 100MB limit (size=${sizeNum})`, { name: file.name, sizeNum });
+      throw new Error(`File too large (exceeds 100MB): ${sizeNum} bytes`);
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(endpoint, { method: 'POST', body: formData });
+    } catch (fetchErr) {
+      console.error('uploadToCloudinary: network/fetch error', { fetchErr, endpoint, cloudName });
+      throw fetchErr;
+    }
+    let data: unknown = {};
+    try {
+      data = await res.json();
+    } catch (jsonErr) {
+      console.error('uploadToCloudinary: failed to parse JSON response', { status: res.status, ok: res.ok, jsonErr });
+    }
+
+    console.log('uploadToCloudinary: response', { status: res.status, ok: res.ok, data });
+
+    function isCloudinaryResponse(obj: unknown): obj is { secure_url?: string; error?: { message?: string } } {
+      return typeof obj === 'object' && obj !== null;
+    }
+
+    if (!res.ok || !isCloudinaryResponse(data) || !data.secure_url) {
+      const errMsg = isCloudinaryResponse(data) ? data.error?.message : 'Failed to upload file';
+      throw new Error(errMsg || 'Failed to upload file');
     }
     return data.secure_url as string;
   }, []);
@@ -55,6 +92,15 @@ export default function CreateAlbum() {
 
     return items.map((f) => ({ ...f, isCover: f.id === firstImage.id }));
   }, []);
+
+  function formatBytes(bytes: number) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const value = parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 2));
+    return `${value} ${sizes[i]}`;
+  }
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -117,9 +163,13 @@ export default function CreateAlbum() {
 
     try {
       // 1) Upload all files to Cloudinary and collect URLs
+      console.log('handleSubmit: starting upload of files', { count: files.length, files: files.map(f => ({ id: f.id, name: f.file.name, type: f.type, size: f.file.size, isCover: f.isCover })) });
+
       const uploaded = await Promise.all(
         files.map(async (f) => {
+          console.log('handleSubmit: uploading file', { id: f.id, name: f.file.name });
           const url = await uploadToCloudinary(f.file, f.type);
+          console.log('handleSubmit: uploaded file', { id: f.id, url });
           return {
             url,
             type: f.type,
@@ -132,7 +182,9 @@ export default function CreateAlbum() {
         })
       );
 
+      console.log('handleSubmit: all uploads complete', { uploaded });
       const coverUrl = pickImageCoverUrl(uploaded);
+      console.log('handleSubmit: chosen coverUrl', { coverUrl });
 
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const endpoint = `${API_BASE}/albums`;
@@ -144,7 +196,7 @@ export default function CreateAlbum() {
         media: uploaded.map(({ url, type, thumbnail, size, mimeType }) => ({ url, type, thumbnail, size, mimeType })),
       };
 
-      console.log('Creating album (URL mode) →', { endpoint, method: 'POST', payload });
+      console.log('Creating album (URL mode) →', { endpoint, method: 'POST', token: !!token, payload });
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -156,11 +208,20 @@ export default function CreateAlbum() {
         body: JSON.stringify(payload),
       });
 
-      const json = await response.json().catch(() => ({}));
+      let json: unknown = {};
+      try {
+        json = await response.json();
+      } catch (parseErr) {
+        console.error('handleSubmit: failed to parse response JSON', { status: response.status, ok: response.ok, parseErr });
+      }
       console.log('Create album response ←', { status: response.status, ok: response.ok, data: json });
 
+      function isApiError(obj: unknown): obj is { status?: { returnMessage?: string }; message?: string } {
+        return typeof obj === 'object' && obj !== null;
+      }
+
       if (!response.ok) {
-        const data = json;
+        const data = isApiError(json) ? json : undefined;
         throw new Error(data?.status?.returnMessage || data?.message || 'Failed to create album');
       }
 
@@ -272,10 +333,13 @@ export default function CreateAlbum() {
                 multiple
               />
             </label>
-            <p className="mt-1 text-xs text-gray-500">
-              {files.length} file{files.length !== 1 ? 's' : ''} selected
-              {files.some((f) => f.isCover) && ' • Cover must be a photo — click the star on an image'}
-            </p>
+            <div className="mt-1 text-xs text-gray-500">
+              <p>
+                {files.length} file{files.length !== 1 ? 's' : ''} selected
+                {files.some((f) => f.isCover) && ' • Cover must be a photo — click the star on an image'}
+              </p>
+              <FileSizeRemark files={files} formatBytes={formatBytes} />
+            </div>
           </div>
         </div>
 
@@ -342,6 +406,35 @@ export default function CreateAlbum() {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// Small helper component placed after the upload input to show total uploaded size
+function FileSizeRemark({
+  files,
+  formatBytes,
+}: {
+  files: MediaFile[];
+  formatBytes: (n: number) => string;
+}) {
+  const maxBytes = 100 * 1024 * 1024;
+  const total = files.reduce((acc, f) => {
+    const raw = (f.file as { size?: unknown })?.size;
+    const n = typeof raw === 'number' ? raw : Number(raw) || 0;
+    return acc + n;
+  }, 0);
+  const pct = Math.min(100, Math.round((total / maxBytes) * 100));
+  const nearLimit = total >= Math.floor(maxBytes * 0.9) && total < maxBytes;
+
+  return (
+    <div className="mt-1">
+      <span>Total size: </span>
+      <span className={total >= maxBytes ? 'text-red-600 font-medium' : 'text-gray-600'}>
+        {formatBytes(total)} ({pct}% of 100MB)
+      </span>
+      {nearLimit && <span className="text-yellow-600 ml-2"> • Approaching limit</span>}
+      {total >= maxBytes && <span className="text-red-600 ml-2"> • Exceeds 100MB</span>}
     </div>
   );
 }
